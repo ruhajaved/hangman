@@ -1,10 +1,15 @@
 package main
 
 import (
+	"context"
+	"fmt"
 	"net/http"
+	"os"
 	"sync"
 
 	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v5"
+	"github.com/joho/godotenv"
 )
 
 type GameSession struct {
@@ -18,7 +23,23 @@ var (
 	mu       sync.Mutex
 )
 
+func init() {
+	err := godotenv.Load()
+	if err != nil {
+		fmt.Println("Error loading .env file")
+	}
+}
+
 func main() {
+	conn, err := pgx.Connect(context.Background(), os.Getenv("DATABASE_URL"))
+
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Unable to connect to database: %v\n", err)
+		os.Exit(1)
+	}
+
+	defer conn.Close(context.Background())
+
 	r := gin.Default()
 
 	r.GET("/", func(c *gin.Context) {
@@ -29,7 +50,7 @@ func main() {
 	r.POST("/guess/letter", guessLetter)
 	r.POST("/guess/word", guessWord)
 
-	err := r.Run(":8080")
+	err = r.Run(":8080")
 	if err != nil {
 		panic(err)
 	}
