@@ -1,5 +1,7 @@
 package main
 
+const MAX_GUESSES = 6
+
 import (
 	"context"
 	"fmt"
@@ -13,16 +15,19 @@ import (
 )
 
 type GameSession struct {
-	Word           string
-	GuessesLeft    int
-	CorrectGuesses []bool
+	Word            string
+	IncorrectGuesses  int
+    WordFilled      []byte
 }
 
+var session GameSession
+/*
 var (
 	sessions = make(map[int]*GameSession)
 	mu       sync.Mutex
 	conn     *pgx.Conn
 )
+*/
 
 func init() {
 	err := godotenv.Load()
@@ -62,8 +67,14 @@ func getWord(c *gin.Context) {
 
 	// let's use a static word for now
 	word := "example"
+    session = GameSession {
+        Word: word,
+        IncorrectGuesses: 0,
+        WordFilled: byteSlice(word),
+    }
 
 	// set up the game session, for now let's use a static one
+    /*
 	var sessionID int
 	guessesLeft := 6
 	err := conn.QueryRow(context.Background(),
@@ -85,11 +96,20 @@ func getWord(c *gin.Context) {
 		"session_id":  sessionID,
 		"word_length": len(word),
 	})
+    */
+}
+
+func byteSlice(word string) []byte{
+    length := len(word)
+    data := make([]byte, length)
+	for i := range data {
+		data[i] = '*'
+	}
+	return data
 }
 
 func guessLetter(c *gin.Context) {
 	var request struct {
-		SessionID int    `json:"session_id"`
 		Letter    string `json:"letter"`
 	}
 
@@ -98,6 +118,7 @@ func guessLetter(c *gin.Context) {
 		return
 	}
 
+    /*
 	mu.Lock()
 	session, exists := sessions[request.SessionID]
 	mu.Unlock()
@@ -106,26 +127,30 @@ func guessLetter(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "session not found"})
 		return
 	}
+    */
 
 	letter := request.Letter
 	correct := false
 
 	for i, l := range session.Word {
 		if string(l) == letter {
-			session.CorrectGuesses[i] = true
+			session.WordFilled[i] = byte(l)
 			correct = true
 		}
 	}
 
 	if !correct {
-		session.GuessesLeft--
+		session.IncorrectGuesses++
 	}
 
 	// TODO: Fail if guesses left is 0
+    if session.IncorrectGuesses == MAX_GUESSES {
+
+    }
 
 	c.JSON(http.StatusOK, gin.H{
 		"correct":      correct,
-		"guesses_left": session.GuessesLeft,
+		"guesses_left": MAX_GUESSES - session.IncorrectGuesses,
 	})
 }
 
