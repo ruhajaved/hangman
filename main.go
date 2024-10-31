@@ -19,8 +19,9 @@ type GameSession struct {
 }
 
 var (
-	sessions = make(map[string]*GameSession)
+	sessions = make(map[int]*GameSession)
 	mu       sync.Mutex
+	conn     *pgx.Conn
 )
 
 func init() {
@@ -46,7 +47,7 @@ func main() {
 		c.JSON(http.StatusOK, gin.H{"message": "hello, world!"})
 	})
 
-	r.GET("/word", getWord)
+	r.GET("/start", getWord)
 	r.POST("/guess/letter", guessLetter)
 	r.POST("/guess/word", guessWord)
 
@@ -63,7 +64,15 @@ func getWord(c *gin.Context) {
 	word := "example"
 
 	// set up the game session, for now let's use a static one
-	sessionID := "1"
+	var sessionID int
+	guessesLeft := 6
+	err := conn.QueryRow(context.Background(),
+		"INSERT INTO game_sessions (word, guesses_left) VALUES ($1, $2) RETURNING id",
+		word, guessesLeft).Scan(&sessionID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create game session"})
+		return
+	}
 	mu.Lock()
 	sessions[sessionID] = &GameSession{
 		Word:           word,
@@ -80,7 +89,7 @@ func getWord(c *gin.Context) {
 
 func guessLetter(c *gin.Context) {
 	var request struct {
-		SessionID string `json:"session_id"`
+		SessionID int    `json:"session_id"`
 		Letter    string `json:"letter"`
 	}
 
@@ -122,7 +131,7 @@ func guessLetter(c *gin.Context) {
 
 func guessWord(c *gin.Context) {
 	var request struct {
-		SessionID string `json:"session_id"`
+		SessionID int    `json:"session_id"`
 		Word      string `json:"word"`
 	}
 
