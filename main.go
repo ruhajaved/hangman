@@ -21,13 +21,6 @@ type GameSession struct {
 
 var session GameSession
 
-/*
-var (
-	sessions = make(map[int]*GameSession)
-	mu       sync.Mutex
-	conn     *pgx.Conn
-)
-*/
 
 func init() {
 	err := godotenv.Load()
@@ -63,9 +56,6 @@ func main() {
 }
 
 func getWord(c *gin.Context) {
-	// difficulty := c.Query("difficulty")
-
-	// let's use a static word for now
 	word := "example"
 	session = GameSession{
 		Word:             word,
@@ -74,30 +64,6 @@ func getWord(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"word": word})
-	// set up the game session, for now let's use a static one
-	/*
-		var sessionID int
-		guessesLeft := 6
-		err := conn.QueryRow(context.Background(),
-			"INSERT INTO game_sessions (word, guesses_left) VALUES ($1, $2) RETURNING id",
-			word, guessesLeft).Scan(&sessionID)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create game session"})
-			return
-		}
-		mu.Lock()
-		sessions[sessionID] = &GameSession{
-			Word:           word,
-			GuessesLeft:    6,
-			CorrectGuesses: make([]bool, len(word)),
-		}
-		mu.Unlock()
-
-		c.JSON(http.StatusOK, gin.H{
-			"session_id":  sessionID,
-			"word_length": len(word),
-		})
-	*/
 }
 
 func byteSlice(word string) []byte {
@@ -113,22 +79,12 @@ func guessLetter(c *gin.Context) {
 	var request struct {
 		Letter string `json:"letter"`
 	}
+    err := c.BindJSON(&request)
 
-	if err := c.ShouldBindJSON(&request); err != nil {
+	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-
-	/*
-		mu.Lock()
-		session, exists := sessions[request.SessionID]
-		mu.Unlock()
-
-		if !exists {
-			c.JSON(http.StatusNotFound, gin.H{"error": "session not found"})
-			return
-		}
-	*/
 
 	letter := request.Letter
 	correct := false
@@ -143,45 +99,62 @@ func guessLetter(c *gin.Context) {
 	if !correct {
 		session.IncorrectGuesses++
 	}
+    if string(session.WordFilled) == session.Word {
+        c.JSON(http.StatusOK, gin.H{
+            "message": "You Won!",
+        })
+        return
+    }
 
-	// TODO: Fail if guesses left is 0
 	if session.IncorrectGuesses == MAX_GUESSES {
-
+        c.JSON(http.StatusOK, gin.H{
+            "message": "You Lost! Start Again.",
+            "current_state": string(session.WordFilled),
+        })
+        return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"correct":      correct,
 		"guesses_left": MAX_GUESSES - session.IncorrectGuesses,
+        "current_state": string(session.WordFilled),
 	})
 }
 
 func guessWord(c *gin.Context) {
-    /*
 	var request struct {
-		SessionID int    `json:"session_id"`
-		Word      string `json:"word"`
+		Word string `json:"word"`
 	}
+    err := c.BindJSON(&request)
 
-	if err := c.ShouldBindJSON(&request); err != nil {
+	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	correct := true
+	word := request.Word
+	correct := false
 
-	if session.Word != request.Word {
-		session.IncorrectGuesses++
-		correct = false
-	}
+    if word == session.Word {
+        c.JSON(http.StatusOK, gin.H{
+            "message": "You Won!",
+        })
+        return
+    }
 
-	// TODO: Fail if guesses left is 0
+    session.IncorrectGuesses++;
+
 	if session.IncorrectGuesses == MAX_GUESSES {
-
+        c.JSON(http.StatusOK, gin.H{
+            "message": "You Lost! Start Again.",
+            "current_state": string(session.WordFilled),
+        })
+        return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"correct":      correct,
 		"guesses_left": MAX_GUESSES - session.IncorrectGuesses,
+        "current_state": string(session.WordFilled),
 	})
-    */
 }
