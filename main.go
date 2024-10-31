@@ -1,18 +1,17 @@
 package main
 
-const MAX_GUESSES = 6
-
 import (
 	"context"
 	"fmt"
 	"net/http"
 	"os"
-	"sync"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
 	"github.com/joho/godotenv"
 )
+
+const MAX_GUESSES = 6
 
 type GameSession struct {
 	Word            string
@@ -73,6 +72,7 @@ func getWord(c *gin.Context) {
         WordFilled: byteSlice(word),
     }
 
+	c.JSON(http.StatusOK, gin.H{"word": word})
 	// set up the game session, for now let's use a static one
     /*
 	var sessionID int
@@ -155,6 +155,7 @@ func guessLetter(c *gin.Context) {
 }
 
 func guessWord(c *gin.Context) {
+    /*
 	var request struct {
 		SessionID int    `json:"session_id"`
 		Word      string `json:"word"`
@@ -185,4 +186,5 @@ func guessWord(c *gin.Context) {
 		"correct":      correct,
 		"guesses_left": session.GuessesLeft,
 	})
+    */
 }
