@@ -11,6 +11,7 @@ import (
 	"github.com/joho/godotenv"
 )
 
+
 const MAX_GUESSES = 6
 
 type GameSession struct {
@@ -19,8 +20,10 @@ type GameSession struct {
 	WordFilled       []byte
 }
 
-var session GameSession
-
+var (
+    session GameSession
+    conn    *pgx.Conn
+)
 
 func init() {
 	err := godotenv.Load()
@@ -30,7 +33,8 @@ func init() {
 }
 
 func main() {
-	conn, err := pgx.Connect(context.Background(), os.Getenv("DATABASE_URL"))
+    var err error
+	conn, err = pgx.Connect(context.Background(), os.Getenv("DATABASE_URL"))
 
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Unable to connect to database: %v\n", err)
@@ -57,6 +61,13 @@ func main() {
 
 func getWord(c *gin.Context) {
 	word := "example"
+    err := conn.QueryRow(context.Background(),
+        "SELECT word FROM game_sessions ORDER BY RANDOM() LIMIT 1").Scan(&word)
+
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create game session"})
+        return
+    }
 	session = GameSession{
 		Word:             word,
 		IncorrectGuesses: 0,
