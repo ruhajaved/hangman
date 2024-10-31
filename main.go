@@ -74,7 +74,7 @@ func getWord(c *gin.Context) {
 		WordFilled:       byteSlice(word),
 	}
 
-	c.JSON(http.StatusOK, gin.H{"word": word})
+    c.JSON(http.StatusOK, gin.H{"message": "Word Created", "Word Length": len(word)})
 }
 
 func byteSlice(word string) []byte {
